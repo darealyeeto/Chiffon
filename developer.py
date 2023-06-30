@@ -15,6 +15,10 @@ class Developer(commands.Cog):
         self.bot = bot
 
     @app_commands.command(description="Reload the specific cog")
+    @app_commands.choices(name=[
+        app_commands.Choice(name="addon", value="addon"),
+        app_commands.Choice(name="developer", value="developer")
+    ])
     async def reload(self, interaction: discord.Interaction, name: str) -> None:
         # TODO: perms check
         try:
