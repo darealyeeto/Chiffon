@@ -9,7 +9,8 @@ themes_url = "https://raw.githubusercontent.com/m4fn3/AddonManagerDatabase/maste
 plugin_install_scheme = "discord://enmity?id=-1&command=install-plugin&params=%s"
 theme_install_scheme = "discord://enmity?id=-1&command=install-theme&params=%s"
 
-addon_update_channel = 1123261003262611547
+plugin_update_channel = 1124388879378698281
+theme_update_channel = 1124389265288212512
 
 
 @dataclass(frozen=True)

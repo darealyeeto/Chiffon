@@ -71,8 +71,10 @@ class Addon(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         # detect changes of the database
-        if message.channel.id == settings.addon_update_channel:
-            await self.bot.update_addon_list()
+        if message.channel.id == settings.plugin_update_channel:
+            await self.bot.update_plugin_list()
+        elif message.channel.id == settings.theme_update_channel:
+            await self.bot.update_theme_list()
 
         # react to [[AddonName]]
         elif message.content.startswith("[[") and message.content.endswith("]]"):

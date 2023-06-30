@@ -22,7 +22,8 @@ class Chiffon(commands.Bot):
         # initialize database
         self.aiohttp_session = aiohttp.ClientSession(loop=self.loop)
         self.update_compatibility_list.start()
-        await self.update_addon_list()
+        await self.update_plugin_list()
+        await self.update_theme_list()
         # load cogs
         await self.load_extension("addon")
         await self.load_extension("developer")
@@ -36,12 +37,13 @@ class Chiffon(commands.Bot):
         data = await resp.json(content_type=None)
         self.compatibility = data
 
-    async def update_addon_list(self):
+    async def update_plugin_list(self):
         resp = await self.aiohttp_session.get(settings.plugins_url)
         data = await resp.json(content_type=None)
         self.plugins = data
         self.plugin_names = {name.lower(): name for name in self.plugins.keys()}
 
+    async def update_theme_list(self):
         resp = await self.aiohttp_session.get(settings.themes_url)
         data = await resp.json(content_type=None)
         self.themes = data
