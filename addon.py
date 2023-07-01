@@ -48,6 +48,8 @@ class Addon(commands.Cog):
         view.add_item(discord.ui.Button(label="Install plugin", url=settings.plugin_install_scheme % (plugin["url"])))  # url only accepts one of ('http', 'https', 'discord')
         if alt:
             view.add_item(discord.ui.Button(label="Install fixed version [Recommended]", url=settings.plugin_install_scheme % alt))
+        if "message_id" in plugin:
+            view.add_item(discord.ui.Button(label="Original post", url=settings.message_link % (settings.plugins_channel, plugin["message_id"])))
         return {"embed": embed, "view": view}
 
     def build_theme_embed(self, theme_name):
@@ -66,6 +68,8 @@ class Addon(commands.Cog):
         # add a button
         view = discord.ui.View()
         view.add_item(discord.ui.Button(label="Install theme", url=settings.theme_install_scheme % (theme["url"])))  # url only accepts one of ('http', 'https', 'discord')
+        if "message_id" in theme:
+            view.add_item(discord.ui.Button(label="Original post", url=settings.message_link % (settings.themes_channel, theme["message_id"])))
         return {"embed": embed, "view": view}
 
     @commands.Cog.listener()
@@ -81,11 +85,14 @@ class Addon(commands.Cog):
             # parse the provided name
             provided_name = message.content.lstrip("[[").rstrip("]]")
             provided_name = provided_name.replace("_", "").replace(" ", "").lower()  # normalize the provided name
-            if provided_name not in self.bot.plugin_names:
-                return
-            plugin_name = self.bot.plugin_names[provided_name]
-            ret = self.build_plugin_embed(plugin_name)
-            await message.reply(**ret)
+            if provided_name in self.bot.plugin_names:
+                plugin_name = self.bot.plugin_names[provided_name]
+                ret = self.build_plugin_embed(plugin_name)
+                await message.reply(**ret)
+            elif provided_name in self.bot.theme_names:
+                theme_name = self.bot.theme_names[provided_name]
+                ret = self.build_theme_embed(theme_name)
+                await message.reply(**ret)
 
     @app_commands.command(name="plugin", description="search plugins")
     async def plugin(self, interaction: discord.Interaction, name: str) -> None:

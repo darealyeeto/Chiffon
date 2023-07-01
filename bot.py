@@ -21,9 +21,11 @@ class Chiffon(commands.Bot):
         print(f"[*] Logged in as {self.user}")
         # initialize database
         self.aiohttp_session = aiohttp.ClientSession(loop=self.loop)
-        self.update_compatibility_list.start()
-        await self.update_plugin_list()
-        await self.update_theme_list()
+        # start a loop task for fetching updates of the compatibility list
+        if not self.update_compatibility_list.is_running():
+            self.update_compatibility_list.start()
+            await self.update_plugin_list()
+            await self.update_theme_list()
         # load cogs
         await self.load_extension("addon")
         await self.load_extension("developer")

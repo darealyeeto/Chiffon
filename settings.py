@@ -13,6 +13,10 @@ theme_install_scheme = "discord://enmity?id=-1&command=install-theme&params=%s"
 plugin_update_channel = 1124388879378698281
 theme_update_channel = 1124389265288212512
 
+plugins_channel = 961782195767365732
+themes_channel = 961782176062509117
+message_link = "https://discord.com/channels/950850315601711176/%d/%d"
+
 
 @dataclass(frozen=True)
 class Emojis:
