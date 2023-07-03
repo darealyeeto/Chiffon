@@ -1,5 +1,3 @@
-from typing import List
-
 import discord
 import traceback2
 from discord import app_commands
@@ -7,6 +5,7 @@ from discord.ext import commands
 
 from bot import Chiffon
 import response
+import settings
 
 
 class Developer(commands.Cog):
@@ -20,13 +19,15 @@ class Developer(commands.Cog):
         app_commands.Choice(name="developer", value="developer")
     ])
     async def reload(self, interaction: discord.Interaction, name: str) -> None:
-        # TODO: perms check
-        try:
-            await self.bot.reload_extension(name)
-        except:
-            await interaction.response.send_message(embed=response.error(f"Failed to reload '{name}'\n```py\n{traceback2.format_exc()}```"), ephemeral=True)
+        if interaction.user.id in settings.developers:
+            try:
+                await self.bot.reload_extension(name)
+            except:
+                await interaction.response.send_message(embed=response.error(f"Failed to reload '{name}'\n```py\n{traceback2.format_exc()}```"), ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=response.success(f"Successfully reloaded '{name}'"), ephemeral=True)
         else:
-            await interaction.response.send_message(embed=response.success(f"Successfully reloaded '{name}'"), ephemeral=True)
+            await interaction.response.send_message(embed=response.error(f"This command is only available for developers"), ephemeral=True)
 
 
 async def setup(bot: Chiffon):

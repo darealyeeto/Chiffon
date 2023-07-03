@@ -1,11 +1,10 @@
 from dataclasses import dataclass
 
+developers = [519760564755365888]
+
 compatibility_url = "https://raw.githubusercontent.com/m4fn3/AddonManagerDatabase/master/compatibility.json"
-# compatibility_url = "https://cdn.discordapp.com/attachments/1009459069087649792/1124373630474784940/compatibility.json"
 plugins_url = "https://raw.githubusercontent.com/m4fn3/AddonManagerDatabase/master/plugins.json"
-# plugins_url = "https://cdn.discordapp.com/attachments/1009459069087649792/1124369428159676427/plugins.json"
 themes_url = "https://raw.githubusercontent.com/m4fn3/AddonManagerDatabase/master/themes.json"
-# themes_url = "https://raw.githubusercontent.com/m4fn3/AddonManagerDatabase/master/themes.json"
 
 plugin_install_scheme = "discord://enmity?id=-1&command=install-plugin&params=%s"
 theme_install_scheme = "discord://enmity?id=-1&command=install-theme&params=%s"
