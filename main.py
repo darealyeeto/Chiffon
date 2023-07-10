@@ -16,7 +16,18 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 TOKEN = os.getenv("TOKEN")
 PREFIX = "."
 
+# :3
+art = """
+   ______  __        _     ___    ___                  
+ .' ___  |[  |      (_)  .' ..] .' ..]                 
+/ .'   \_| | |--.   __  _| |_  _| |_   .--.   _ .--.   
+| |        | .-. | [  |'-| |-''-| |-'/ .'`\ \[ `.-. |  
+\ `.___.'\ | | | |  | |  | |    | |  | \__. | | | | |  
+ `.____ .'[___]|__][___][___]  [___]  '.__.' [___||__]                                         
+"""
+
 if __name__ == '__main__':
+    print(art)
     intents = discord.Intents.default()
     intents.typing = False
     intents.message_content = True

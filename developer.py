@@ -27,7 +27,7 @@ class Developer(commands.Cog):
             else:
                 await interaction.response.send_message(embed=response.success(f"Successfully reloaded '{name}'"), ephemeral=True)
         else:
-            await interaction.response.send_message(embed=response.error(f"This command is only available for developers"), ephemeral=True)
+            await interaction.response.send_message(embed=response.error(f"This command is only available to developers"), ephemeral=True)
 
 
 async def setup(bot: Chiffon):

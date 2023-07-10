@@ -1,12 +1,12 @@
-import json
-from typing import List
-
+import re
 import discord
 from discord import app_commands
 from discord.ext import commands
+from typing import List
+from thefuzz import process
 
-import response
 from bot import Chiffon
+import response
 import settings
 
 
@@ -14,6 +14,9 @@ class Addon(commands.Cog):
 
     def __init__(self, bot: Chiffon) -> None:
         self.bot = bot
+        self.message_pattern = re.compile(r".*(?<!\[)+\[\[(([\w 　]){2,})]](?!])+.*")
+        # NOTE: .* : 前後の関係ないもの / (?<!\[)+や(?!])+ : 多すぎる[または]で囲まれたものの除去 / (([\w 　]){2,}) : 中身は2文字以上の空白または[a-zA-Z0-9_]
+        # https://github.com/DiscordGIR/GIRRewrite/blob/6e12e10687be8e0f97c2c1adee6f6402ed44a2b6/cogs/commands/misc/canister.py#L31
 
     def build_plugin_embed(self, plugin_name):
         plugin = self.bot.plugins[plugin_name]
@@ -81,18 +84,28 @@ class Addon(commands.Cog):
             await self.bot.update_theme_list()
 
         # react to [[AddonName]]
-        elif message.content.startswith("[[") and message.content.endswith("]]"):
-            # parse the provided name
-            provided_name = message.content.lstrip("[[").rstrip("]]")
-            provided_name = provided_name.replace("_", "").replace(" ", "").lower()  # normalize the provided name
-            if provided_name in self.bot.plugin_names:
-                plugin_name = self.bot.plugin_names[provided_name]
-                ret = self.build_plugin_embed(plugin_name)
-                await message.reply(**ret)
-            elif provided_name in self.bot.theme_names:
-                theme_name = self.bot.theme_names[provided_name]
-                ret = self.build_theme_embed(theme_name)
-                await message.reply(**ret)
+        match = self.message_pattern.search(message.content)
+        if not match:
+            return
+        # parse the provided name
+        provided_name = match.group(1)
+        provided_name = provided_name.replace("_", "").replace(" ", "").lower()  # normalize the provided name
+        # look for candidates whose name is close to the provided name
+        plugin_cands = [("plugin@" + p[0], p[1]) for p in process.extract(provided_name, self.bot.plugins.keys()) if p[1] >= 80]
+        theme_cands = [("theme@" + t[0], t[1]) for t in process.extract(provided_name, self.bot.themes.keys()) if t[1] >= 80]
+        cands = plugin_cands + theme_cands
+        if not cands:
+            return
+        cands.sort(key=lambda x: x[1])  # sort by weights
+        addon_type = cands[0][0].split("@")[0]
+        addon_name = cands[0][0].split("@")[1]
+        ret = {}
+        if addon_type == "plugin":
+            ret = self.build_plugin_embed(addon_name)
+        elif addon_type == "theme":
+            ret = self.build_theme_embed(addon_name)
+        # TODO: add other candidates as drop down menu if any
+        await message.reply(**ret)
 
     @app_commands.command(name="plugin", description="search plugins")
     async def plugin(self, interaction: discord.Interaction, name: str) -> None:
@@ -104,6 +117,7 @@ class Addon(commands.Cog):
 
     @plugin.autocomplete("name")
     async def plugin_autocomplete(self, interaction: discord.Interaction, query: str) -> List[app_commands.Choice[str]]:
+        # TODO: introduce fuzzy search to autocomplete too
         return [app_commands.Choice(name=name, value=name) for name in self.bot.plugins.keys() if query.lower() in name.lower()][:25]
 
     @app_commands.command(name="theme", description="search themes")
