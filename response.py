@@ -1,12 +1,10 @@
 import discord
-from settings import Emojis
-
-emojis = Emojis()
+import settings
 
 
 def error(text: str, title: str = None):
     embed = discord.Embed(
-        description=f"{emojis.xx} {text}",
+        description=f"{settings.emojis.xx} {text}",
         color=discord.Color.red()
     )
     if title:
@@ -16,7 +14,7 @@ def error(text: str, title: str = None):
 
 def success(text: str, title: str = None):
     embed = discord.Embed(
-        description=f"{emojis.oo} {text}",
+        description=f"{settings.emojis.oo} {text}",
         color=discord.Color.green()
     )
     if title:
@@ -26,7 +24,7 @@ def success(text: str, title: str = None):
 
 def warning(text: str, title: str = None):
     embed = discord.Embed(
-        description=f"{emojis.warn} {text}",
+        description=f"{settings.emojis.warn} {text}",
         color=0xf7b51c
     )
     if title:

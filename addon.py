@@ -1,13 +1,80 @@
 import re
 import discord
+import traceback2
 from discord import app_commands
 from discord.ext import commands
-from typing import List
+from typing import List, Union
 from thefuzz import process
 
 from bot import Chiffon
 import response
 import settings
+
+
+def parse_addon_string(meta: str) -> tuple[str, str]:
+    return meta.split("@")[0], meta.split("@")[1]
+
+
+class AddonDropdown(discord.ui.Select):
+    """ Dropdown menu for addon embed """
+
+    def __init__(self, addon, cands: list, user_id: int) -> None:
+        """
+        :param addon: Addon class
+        :param cands: candidate addons
+        :param user_id: the user who performed a search
+        """
+        self.addon: Addon = addon
+        self.user_id: int = user_id
+        self.cands: list = cands
+        self.message: Union[None, discord.Message] = None
+        metas = [c[0] for c in cands]
+        options = []
+        for meta in metas:
+            addon_type, addon_name = parse_addon_string(meta)
+            options.append(discord.SelectOption(
+                label=addon_name,
+                # description="",
+                emoji=settings.emojis[addon_type],
+                value=meta
+            ))
+        super().__init__(placeholder='See other candidates', min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        """
+        when another addon is selected with a dropdown
+        :param interaction:
+        """
+        if interaction.user.id != self.user_id:
+            return
+        # create a new view
+        addon_type, addon_name = parse_addon_string(self.values[0])
+        embed = discord.Embed()
+        view = discord.ui.View()
+        if addon_type == "plugin":
+            embed, view = self.addon.build_plugin_embed(addon_name)
+        elif addon_type == "theme":
+            embed, view = self.addon.build_theme_embed(addon_name)
+        dropdown = AddonDropdown(self.addon, self.cands, self.user_id)
+        view.add_item(dropdown)
+        view.on_timeout = dropdown.on_timeout
+        await interaction.response.edit_message(embed=embed, view=view)
+        dropdown.set_message(self.message)
+        # stop the previous view
+        self._view.stop()
+
+    def set_message(self, message: discord.Message) -> None:
+        """
+        set the message of addon embed
+        :param message: the message of addon embed
+        """
+        self.message = message
+
+    async def on_timeout(self) -> None:
+        self.disabled = True
+        self.placeholder = "timed out"
+        if self.message:
+            await self.message.edit(view=self._view)
 
 
 class Addon(commands.Cog):
@@ -47,13 +114,13 @@ class Addon(commands.Cog):
             elif note["ver"] == "Working":
                 embed.add_field(name="Notes", value=note["text"], inline=False)
         # add a button
-        view = discord.ui.View()
+        view = discord.ui.View(timeout=settings.dropdown_timeout)
         view.add_item(discord.ui.Button(label="Install plugin", url=settings.plugin_install_scheme % (plugin["url"])))  # url only accepts one of ('http', 'https', 'discord')
         if alt:
             view.add_item(discord.ui.Button(label="Install fixed version [Recommended]", url=settings.plugin_install_scheme % alt))
         if "message_id" in plugin:
             view.add_item(discord.ui.Button(label="Original post", url=settings.message_link % (settings.plugins_channel, plugin["message_id"])))
-        return {"embed": embed, "view": view}
+        return embed, view
 
     def build_theme_embed(self, theme_name):
         theme = self.bot.themes[theme_name]
@@ -69,11 +136,11 @@ class Addon(commands.Cog):
         if "author" in theme:
             embed.add_field(name="Author", value=", ".join([a["name"] for a in theme["author"]]))
         # add a button
-        view = discord.ui.View()
+        view = discord.ui.View(timeout=settings.dropdown_timeout)
         view.add_item(discord.ui.Button(label="Install theme", url=settings.theme_install_scheme % (theme["url"])))  # url only accepts one of ('http', 'https', 'discord')
         if "message_id" in theme:
             view.add_item(discord.ui.Button(label="Original post", url=settings.message_link % (settings.themes_channel, theme["message_id"])))
-        return {"embed": embed, "view": view}
+        return embed, view
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -91,45 +158,92 @@ class Addon(commands.Cog):
         provided_name = match.group(1)
         provided_name = provided_name.replace("_", "").replace(" ", "").lower()  # normalize the provided name
         # look for candidates whose name is close to the provided name
+        # (to mix both plugins and themes, add the special prefix to addon names and parse with parse_addon_string() later)
         plugin_cands = [("plugin@" + p[0], p[1]) for p in process.extract(provided_name, self.bot.plugins.keys()) if p[1] >= 80]
         theme_cands = [("theme@" + t[0], t[1]) for t in process.extract(provided_name, self.bot.themes.keys()) if t[1] >= 80]
         cands = plugin_cands + theme_cands
         if not cands:
             return
-        cands.sort(key=lambda x: x[1], reverse=True)  # sort by weights
-        addon_type = cands[0][0].split("@")[0]
-        addon_name = cands[0][0].split("@")[1]
-        ret = {}
+        cands.sort(key=lambda x: x[1], reverse=True)  # sort candidates by weights
+        # get and parse the most well-matched addon
+        addon_type, addon_name = parse_addon_string(cands[0][0])
+        embed = discord.Embed()
+        view = discord.ui.View()
         if addon_type == "plugin":
-            ret = self.build_plugin_embed(addon_name)
+            embed, view = self.build_plugin_embed(addon_name)
         elif addon_type == "theme":
-            ret = self.build_theme_embed(addon_name)
-        # TODO: add other candidates as drop down menu if any
-        await message.reply(**ret)
+            embed, view = self.build_theme_embed(addon_name)
+        # create dropdown menu for other candidates
+        dropdown = AddonDropdown(self, cands, message.author.id)
+        if len(cands) > 1:
+            view.add_item(dropdown)
+            view.on_timeout = dropdown.on_timeout
+        message = await message.reply(embed=embed, view=view)
+        dropdown.set_message(message)
 
     @app_commands.command(name="plugin", description="search plugins")
     async def plugin(self, interaction: discord.Interaction, name: str) -> None:
-        if name not in self.bot.plugins.keys():
-            await interaction.response.send_message(embed=response.error("Please enter a valid plugin name"))
+        """
+        bot command that returns plugins whose name is close to the provided name
+        :param interaction:
+        :param name: the name provided by a user
+        """
+        cands = [("plugin@" + p[0], p[1]) for p in process.extract(name, self.bot.plugins.keys()) if p[1] >= 80]
+        if not cands:
+            await interaction.response.send_message(embed=response.error("No plugin was found. Please try changing the query."))
             return
-        ret = self.build_plugin_embed(name)
-        await interaction.response.send_message(**ret)
+        cands.sort(key=lambda x: x[1], reverse=True)  # sort candidates by weights
+        # fetch and parse the most well-matched addon
+        addon_type, addon_name = parse_addon_string(cands[0][0])
+        embed, view = self.build_plugin_embed(addon_name)
+        dropdown = AddonDropdown(self, cands, interaction.user.id)
+        if len(cands) > 1:
+            view.add_item(dropdown)
+            view.on_timeout = dropdown.on_timeout
+        await interaction.response.send_message(embed=embed, view=view)
+        # dropdown.set_message(interaction.message)  # NOTE: we can't edit this message afterward
 
     @plugin.autocomplete("name")
     async def plugin_autocomplete(self, interaction: discord.Interaction, query: str) -> List[app_commands.Choice[str]]:
+        """
+        return plugins whose name includes the query text
+        :param interaction:
+        :param query: the query provided by a user
+        :return: candidates
+        """
         # TODO: introduce fuzzy search to autocomplete too
         return [app_commands.Choice(name=name, value=name) for name in self.bot.plugins.keys() if query.lower() in name.lower()][:25]
 
     @app_commands.command(name="theme", description="search themes")
     async def theme(self, interaction: discord.Interaction, name: str) -> None:
-        if name not in self.bot.themes.keys():
-            await interaction.response.send_message(embed=response.error("Please enter a valid theme name"))
+        """
+        bot command that returns themes whose name is close to the provided name
+        :param interaction:
+        :param name: the name provided by a user
+        """
+        cands = [("theme@" + p[0], p[1]) for p in process.extract(name, self.bot.themes.keys()) if p[1] >= 80]
+        if not cands:
+            await interaction.response.send_message(embed=response.error("No theme was found. Please try changing the query."))
             return
-        ret = self.build_theme_embed(name)
-        await interaction.response.send_message(**ret)
+        cands.sort(key=lambda x: x[1], reverse=True)  # sort candidates by weights
+        # fetch and parse the most well-matched addon
+        addon_type, addon_name = parse_addon_string(cands[0][0])
+        embed, view = self.build_theme_embed(addon_name)
+        dropdown = AddonDropdown(self, cands, interaction.user.id)
+        if len(cands) > 1:
+            view.add_item(dropdown)
+            view.on_timeout = dropdown.on_timeout
+        await interaction.response.send_message(embed=embed, view=view)
+        # dropdown.set_message(interaction.message)
 
     @theme.autocomplete("name")
     async def theme_autocomplete(self, interaction: discord.Interaction, query: str) -> List[app_commands.Choice[str]]:
+        """
+        return themes whose name includes the query text
+        :param interaction:
+        :param query: the query provided by a user
+        :return: candidates
+        """
         return [app_commands.Choice(name=name, value=name) for name in self.bot.themes.keys() if query.lower() in name.lower()][:25]
 
 

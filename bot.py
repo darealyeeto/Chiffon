@@ -29,6 +29,8 @@ class Chiffon(commands.Bot):
         await self.load_extension("developer")
         # sync commands
         await self.tree.sync()
+        # DEBUG: dump emojis
+        # print([f"<:{e.name}:{e.id}>" for e in self.get_guild(settings.chiffon_guild).emojis])
 
     @tasks.loop(hours=24)
     async def update_compatibility_list(self):
