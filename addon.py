@@ -96,7 +96,7 @@ class Addon(commands.Cog):
         cands = plugin_cands + theme_cands
         if not cands:
             return
-        cands.sort(key=lambda x: x[1])  # sort by weights
+        cands.sort(key=lambda x: x[1], reverse=True)  # sort by weights
         addon_type = cands[0][0].split("@")[0]
         addon_name = cands[0][0].split("@")[1]
         ret = {}
