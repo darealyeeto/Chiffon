@@ -175,10 +175,10 @@ class Addon(commands.Cog):
         :param user_id: id of the user who performed this action
         :param plugin: whether to include plugins
         :param theme: whether to include themes
-        :return:
+        :return: return embed, view, dropdown. if no addon was found, return None
         """
         query = query.replace("_", "").replace(" ", "").lower()  # normalize the query
-        cands = []
+        cands = []  # list of <addon_type>@<addon_name>
         # look for candidates whose name is close to the provided name
         # to mix both plugins and themes, add the special prefix to addon names and parse with parse_addon_string() later
         if plugin:

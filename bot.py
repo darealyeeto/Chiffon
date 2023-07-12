@@ -33,18 +33,17 @@ class Chiffon(commands.Bot):
         # print([f"<:{e.name}:{e.id}>" for e in self.get_guild(settings.chiffon_guild).emojis])
 
     @tasks.loop(hours=24)
-    async def update_compatibility_list(self):
+    async def update_compatibility_list(self) -> None:
         resp = await self.aiohttp_session.get(settings.compatibility_url)
         data = await resp.json(content_type=None)
         self.compatibility = data
 
-    async def update_plugin_list(self):
+    async def update_plugin_list(self) -> None:
         resp = await self.aiohttp_session.get(settings.plugins_url)
         data = await resp.json(content_type=None)
         self.plugins = data
 
-    async def update_theme_list(self):
+    async def update_theme_list(self) -> None:
         resp = await self.aiohttp_session.get(settings.themes_url)
         data = await resp.json(content_type=None)
         self.themes = data
-
